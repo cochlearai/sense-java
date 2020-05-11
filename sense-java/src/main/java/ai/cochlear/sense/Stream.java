@@ -41,6 +41,7 @@ public class Stream {
     private boolean inferenced;
     private Throwable failed = null;
     private StreamObserver<RequestStream> requestObserver;
+    public Result result;
 
     public Stream(String apiKey, InputStream streamer, int samplingRate, String dataType, String host, int maxEventsHistorySize) {
         this.apiKey = apiKey;
@@ -142,6 +143,11 @@ public class Stream {
         //pushByte(f2b(floats));
     }
 
+    public void inference() throws Exception{
+        grpcRequests();
+        result = new Result();
+    }
+
     public void close() throws Exception {
         if (!this.inferenced) {
             throw new Exception("canot close stream if this one was not inferenced");
@@ -155,7 +161,7 @@ public class Stream {
 
 
 
-    public void grpcRequests() throws Exception{
+    private void grpcRequests() throws Exception{
         sendToGrpc();
         if(this.senseResultListener ==null){
             throw new Exception("Listener not registered.");
@@ -186,9 +192,8 @@ public class Stream {
         class BistreamObserver implements StreamObserver<Response>{
             @Override
             public void onNext(Response out) {
-                //Log.d("CochlearSenseResult", out.getOutputs());
-                senseResultListener.onResult(out.getOutputs());
-
+                result.appendNewResult(out.getOutputs(),maxEventsHistorySize);
+                senseResultListener.onResult(result);
             }
 
             @Override
