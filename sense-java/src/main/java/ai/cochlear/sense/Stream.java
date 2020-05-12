@@ -30,7 +30,7 @@ import ai.cochlear.sense.grpc.SenseGrpc.SenseStub;
 public class Stream {
     private static final long deadline = 10;
     private final String apiKey;
-    private final InputStream streamer;
+    private final byte[] streamer;
     private final int samplingRate;
     private final String dataType;
     private final String host;
@@ -41,9 +41,9 @@ public class Stream {
     private boolean inferenced;
     private Throwable failed = null;
     private StreamObserver<RequestStream> requestObserver;
-    public Result result;
+    public Result result = new Result();
 
-    public Stream(String apiKey, InputStream streamer, int samplingRate, String dataType, String host, int maxEventsHistorySize) {
+    public Stream(String apiKey, byte[] streamer, int samplingRate, String dataType, String host, int maxEventsHistorySize) {
         this.apiKey = apiKey;
         this.streamer = streamer;
         this.samplingRate = samplingRate;
@@ -145,7 +145,6 @@ public class Stream {
 
     public void inference() throws Exception{
         grpcRequests();
-        result = new Result();
     }
 
     public void close() throws Exception {
@@ -167,7 +166,7 @@ public class Stream {
             throw new Exception("Listener not registered.");
         }
         RequestStream streamRequest = RequestStream.newBuilder()
-                .setData(ByteString.readFrom(streamer))
+                .setData(ByteString.copyFrom(streamer))
                 .setApikey(apiKey)
                 .setSr(samplingRate)
                 .setDtype("float32")

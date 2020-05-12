@@ -37,6 +37,7 @@ repositories {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     //implementation (name:'sense-java', ext:'jar')
+    implementation("com.google.guava:guava:29.0-android")
     implementation 'io.grpc:grpc-okhttp:1.28.1'
     implementation 'io.grpc:grpc-protobuf-lite:1.28.1'
     implementation 'io.grpc:grpc-stub:1.28.1'
