@@ -2,18 +2,16 @@ package ai.cochlear.sense;
 
 import com.google.protobuf.ByteString;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.KeyStore;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -31,10 +29,8 @@ public class File {
 	private final InputStream reader;
 	private final String format;
 	private final String host;
-	private ManagedChannel channel;
-	private SenseStub stub;
 	private boolean inferenced;
-	private Throwable failed = null;
+	private SSLContext grpcSSLContext;
 
 	private static enum FileFormat {
 		mp3,
@@ -44,8 +40,42 @@ public class File {
 		mp4
 	}
 
-	public File(String apiKey, InputStream reader, String format, String host) {
+	public static class Builder {
+		private String apiKey;
+		private InputStream reader;
+		private String format;
+		private String host = "sense.cochlear.ai";
+
+		public Builder withApiKey(String apiKey) {
+			this.apiKey = apiKey;
+			return this;
+		}
+
+		public Builder withReader(InputStream reader) {
+			this.reader = reader;
+			return this;
+		}
+
+		public Builder withFormat(String format) {
+			this.format = format;
+			return this;
+		}
+
+		public Builder withHost(String host) {
+			this.host = host;
+			return this;
+		}
+
+		public File build() throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException {
+			return new File(this.apiKey,this.reader, this.format,this.host);
+		}
+
+	}
+
+	private File(String apiKey, InputStream reader, String format, String host) throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException {
 		formatError(format);
+		grpcSSLContext = new InternalCertificate().get();
+
 		this.apiKey = apiKey;
 		this.reader = reader;
 		this.format = format;
@@ -53,125 +83,63 @@ public class File {
 		this.inferenced = false;
 	}
 
-	private SSLContext getSSLContext()
-	{
-		SSLContext sslContext = null;
-		String temp = Constants.SERVER_CA_CERTIFICATE;
-		temp = temp.replace("\n","\r\n");
-		InputStream caInputStream = new ByteArrayInputStream(temp.getBytes());
-
-		try
-		{
-			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-			X509Certificate cert = (X509Certificate) certificateFactory.generateCertificate(caInputStream);
-
-			System.out.println("cert=" + ((X509Certificate) cert).getSubjectDN());
-
-			String alias = cert.getSubjectX500Principal().getName();
-
-			// Load Client CA
-			KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-			keyStore.load(null, null);
-			keyStore.setCertificateEntry(alias, cert);
-
-			// Create KeyManager using Client CA
-			String kmfAlgorithm = KeyManagerFactory.getDefaultAlgorithm();
-			KeyManagerFactory kmf = KeyManagerFactory.getInstance(kmfAlgorithm);
-			kmf.init(keyStore, null);
-
-			// Create TrustManager using Client CA
-			String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
-			TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
-			tmf.init(keyStore);
-
-			// Create SSLContext using KeyManager and TrustManager
-			sslContext = SSLContext.getInstance("TLS");
-			sslContext.init(null, tmf.getTrustManagers(), null);
-		}
-		catch(Exception exp)
-		{
-			sslContext = null;
-		}
-
-		return sslContext;
-	}
-
-	public void fileError(String filename) {
-		java.io.File file = new java.io.File(filename);
-		if(!file.exists()) {
-			try {
-				throw new IOException("File not found");
-			}
-			catch (IOException e) {
-
-			}
-		}
-	}
-
-	public void formatError(String fileFormat) {
-		FileFormat temp;
+	private void formatError(String fileFormat) throws IllegalArgumentException{
 		try {
-			temp = FileFormat.valueOf(fileFormat);
+			FileFormat.valueOf(fileFormat);
 		} catch (IllegalArgumentException e) {
 			throw new IllegalArgumentException("Invalid File format");
 		}
 	}
 
-	public Result inference() throws InterruptedException, RuntimeException, IOException{
+	public Result inference() throws RuntimeException, IOException, InterruptedException {
 		if (this.inferenced) {
 			throw new RuntimeException("File was already inferenced");
 		}
 		this.inferenced = true;
-		SSLContext grpcSSLContext = getSSLContext();
-		this.channel = OkHttpChannelBuilder.forAddress(host, Constants.PORT).sslSocketFactory(grpcSSLContext.getSocketFactory()).build();
-		this.stub = SenseGrpc.newStub(channel);
-		final String[] result = new String[1];
+
+		final ManagedChannel channel = OkHttpChannelBuilder.forAddress(host, Constants.PORT).sslSocketFactory(grpcSSLContext.getSocketFactory()).build();
+		final SenseStub stub = SenseGrpc.newStub(channel);
+
+		final String[] outputs = {new String()};
 		final CountDownLatch finishLatch = new CountDownLatch(1);
+
 		StreamObserver<Response> responseObserver = new StreamObserver<Response>() {
 		    @Override
 		    public void onNext(Response out) {
-		    	result[0] = out.getOutputs();
-
-		    	//log
-				//System.out.println(result[0]);
+		    	outputs[0] = out.getOutputs();
 		    }
+
 		    @Override
 		    public void onError(Throwable t) {
 		    	Status status = Status.fromThrowable(t);
-		    	System.err.println(status);
-		    	failed = t;
-		    	finishLatch.countDown();
+		    	throw status.asRuntimeException();
 		    }
+
 		    @Override
 		    public void onCompleted()
 			{
 		    	finishLatch.countDown();
 		    }
 		};
+
 		StreamObserver<Request> requestObserver = stub.sense(responseObserver);
 
-		try {
-			byte[] audioBytes = new byte[Constants.MAX_DATA_SIZE];
-			while(reader.read(audioBytes) > 0) {
-				Request _input = Request.newBuilder()
-						.setData(ByteString.copyFrom(audioBytes))
-						.setApikey(this.apiKey)
-						.setFormat(format)
-						.setApiVersion(Constants.API_VERSION)
-						.setUserAgent(Constants.USER_AGENT)
-						.build();
-				requestObserver.onNext(_input);
-			}
-			
-		}catch(RuntimeException e) {
-			requestObserver.onError(e);
-			throw e;
+		byte[] audioBytes = new byte[Constants.MAX_DATA_SIZE];
+		while(reader.read(audioBytes) > 0) {
+			Request request = Request.newBuilder()
+					.setData(ByteString.copyFrom(audioBytes))
+					.setApikey(this.apiKey)
+					.setFormat(format)
+					.setApiVersion(Constants.API_VERSION)
+					.setUserAgent(Constants.USER_AGENT)
+					.build();
+			requestObserver.onNext(request);
 		}
+
 		requestObserver.onCompleted();
-		if(!finishLatch.await(1,TimeUnit.MINUTES)) {
-			throw new RuntimeException(
-					"Could not finish rpc within 1 minute, the server is likely down");
-		}
-		return new Result(result[0]);
+
+		finishLatch.await();
+
+		return new Result(outputs[0]);
 	}
 }

@@ -149,7 +149,7 @@ public  final class Response extends
       com.google.protobuf.GeneratedMessageLite.Builder<
         Response, Builder> implements
       // @@protoc_insertion_point(builder_implements:sense.full.v1.Response)
-      ai.cochlear.sense.grpc.ResponseOrBuilder {
+      ResponseOrBuilder {
     // Construct using ai.cochlear.sense.grpc.Response.newBuilder()
     private Builder() {
       super(DEFAULT_INSTANCE);
