@@ -115,7 +115,6 @@ public class Stream {
 
         for (byte[] bytes : streamer) {
             if (bytes == null) {
-                System.out.println("should be stopped");
                 connection.onCompleted();
                 break;
             }
@@ -168,8 +167,8 @@ public class Stream {
                     result[0] = new Result(out.getOutputs());
                 } else {
                     result[0].appendNewResult(out.getOutputs(),maxEventsHistorySize);
-                    senseResultListener.onResult(result[0]);
                 }
+                senseResultListener.onResult(result[0]);
             }
 
             @Override

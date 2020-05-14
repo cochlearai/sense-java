@@ -27,9 +27,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         try {
             ProviderInstaller.installIfNeeded(getApplicationContext());
-        } catch (GooglePlayServicesRepairableException e) {
-            e.printStackTrace();
-        } catch (GooglePlayServicesNotAvailableException e) {
+        } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException e) {
             e.printStackTrace();
         }
         setContentView(R.layout.activity_main);
@@ -50,7 +48,12 @@ public class MainActivity extends AppCompatActivity {
         try {
             is = am.open("temp.wav");
             System.out.println(is);
-            File fileClient = new File(apiKey,is,"wav","sense.cochlear.ai");
+            File fileClient = new File
+                    .Builder()
+                    .withApiKey(apiKey)
+                    .withReader(is)
+                    .withFormat("wav")
+                    .build();
             Result result = fileClient.inference();
 
             //System.out.println(result);

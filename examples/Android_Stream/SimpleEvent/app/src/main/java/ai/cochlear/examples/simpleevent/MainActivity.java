@@ -19,7 +19,7 @@ import ai.cochlear.sense.SenseResultListener;
 import ai.cochlear.sense.Stream;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String apiKey = "< Enter API KEY >";
+    private static final String apiKey = "< Enter API Key >";
     private static final int SecondToInference = 30;
     private static final int SamplingRate = 22050;
 
@@ -100,8 +100,9 @@ public class MainActivity extends AppCompatActivity {
                 .Builder()
                 .withApiKey(apiKey)
                 .withStreamer(recorder)
-                .withSamplingRate(22050)
+                .withSamplingRate(SamplingRate)
                 .withDataType("float32")
+                .withMaxEventsHistorySize(0)
                 .build();
 
         Thread inferenceThread = new Thread(new Runnable() {
@@ -110,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
                 class Callbacks implements SenseResultListener {
                     @Override
                     public void onResult(Result result) {
+                        System.out.println(result.toJson());
                         List<Event> events = result.allEvents();
                         changeServiceMessage(result.service());
                         changeSoundMessage(events.get(events.size() - 1).tag);
