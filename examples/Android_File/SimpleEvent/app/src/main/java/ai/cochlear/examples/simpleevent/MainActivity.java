@@ -19,7 +19,7 @@ import ai.cochlear.sense.Result;
 public class MainActivity extends AppCompatActivity {
     private static final String LOG_TAG = MainActivity.class.getName();
     private final String TAG = "SenseAndroidClient";
-    private static final String apiKey = "< Enter API KEY >";
+    private static final String apiKey = "< Enter API Key >";
 
 
     @Override

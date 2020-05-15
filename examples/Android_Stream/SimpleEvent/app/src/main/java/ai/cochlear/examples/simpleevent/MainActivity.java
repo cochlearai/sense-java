@@ -19,7 +19,7 @@ import ai.cochlear.sense.SenseResultListener;
 import ai.cochlear.sense.Stream;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String apiKey = "< Enter API Key >";
+    private static final String apiKey = " < Enter API Key >";
     private static final int SecondToInference = 30;
     private static final int SamplingRate = 22050;
 
