@@ -14,6 +14,14 @@ To date, Sense API is the only publicly available API online for machine listeni
 ### 1. Add Dependency
 
 **Add this to your project build.gradle file:**
+```
+repositories {
+        jcenter()
+}
+dependencies {
+    implementation 'ai.cochlear.sense:sense-java:1.0'
+}
+```
 
  
 ### 2. Get API Key
