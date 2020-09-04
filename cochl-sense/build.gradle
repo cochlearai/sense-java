@@ -1,0 +1,81 @@
+apply plugin: 'java-library'
+
+def GRPCVersion = '1.28.1'
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "io.grpc:grpc-okhttp:${GRPCVersion}"
+    implementation "io.grpc:grpc-protobuf-lite:${GRPCVersion}"
+    implementation "io.grpc:grpc-stub:${GRPCVersion}"
+
+    implementation group: 'org.json', name: 'json', version: '20190722'
+}
+
+apply plugin: "maven-publish"
+apply plugin: 'com.jfrog.bintray'
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+publishing {
+    publications {
+        CochlSense(MavenPublication) {
+            from components.java
+            groupId 'ai.cochlear.sense'
+            artifactId 'cochl-sense'
+            version "1.1.0"
+            artifact sourcesJar
+            artifact javadocJar
+            pom {
+                name = 'Cochl Sense'
+                description = 'API Library for Java and Android with audio analysis and recognition solutions from Cochlear.ai'
+                url = 'https://cochlear.ai'
+                licenses {
+                    license {
+                        name = "MIT"
+                        url = "https://github.com/cochlearai/sense-java/LICENSE"
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'cochl'
+                        name = 'Cochl'
+                        email = 'support@cochlear.ai'
+                    }
+                }
+                scm {
+                    connection = properties.get('defaultRepoUrl')
+                    developerConnection = properties.get('defaultRepoUrl')
+                    url = properties.get('defaultRepoUrl')
+                }
+            }
+        }
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    publications = ['CochlSense']
+    publish = true
+    pkg {
+        repo = 'cochl-sense'
+        name = 'ai.cochlear.sense'
+        userOrg = 'cochl'
+        licenses = ['MIT']
+        vcsUrl = 'https://github.com/cochlearai/sense-java'
+        websiteUrl = 'https://cochlear.ai'
+        version {
+            name = "1.1.0"
+            desc = 'Sense Java Library'
+            released = new Date()
+        }
+    }
+}

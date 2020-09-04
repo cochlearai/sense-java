@@ -1,0 +1,3 @@
+include ':cochl-sense'
+include ':examples'
+rootProject.name = "Java"

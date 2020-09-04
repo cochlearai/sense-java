@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Cochlear.ai</string>
+    <string name="api_key">Api Key</string>
+    <string name="inference_file">Inference File</string>
+    <string name="inference_microphone">Inference Microphone</string>
+    <string name="central_text">Enter api key, and inference a file or your microphone</string>
+</resources>
